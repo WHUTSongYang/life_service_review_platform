@@ -1,0 +1,81 @@
+# 服务端口
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/life_service_review_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 1234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: 192.168.88.101
+      port: 6379
+      database: 1
+      password: 123321
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+app:
+  admin:
+    # 管理员用户ID列表，逗号分隔；可调用 /api/admin/seed/*
+    user-ids: 1
+  cache:
+    shop-categories-key: "shop:categories"
+    shop-categories-ttl-seconds: 3600
+    shop-detail-key-prefix: "cache:shop:detail:"
+    shop-detail-ttl-seconds: 600
+    product-detail-key-prefix: "cache:product:detail:"
+    product-detail-ttl-seconds: 600
+    nearby-key-prefix: "cache:nearby:"
+    nearby-ttl-seconds: 90
+    null-ttl-seconds: 120
+    ttl-jitter-seconds: 120
+    lock-ttl-seconds: 5
+    double-delete-delay-ms: 400
+  jwt:
+    secret: your-very-long-jwt-secret-key-change-me-1234567890
+    expire-seconds: 604800
+  # ========== AI 大模型配置（LangChain4j） ==========
+  # enabled: 总开关，false 时所有 AI 功能走本地兜底，不调用远程模型
+  # base-url: OpenAI 兼容协议网关地址（DashScope/DeepSeek 等），LangChain4j 会追加 /chat/completions
+  # model: 使用的模型名称
+  # api-key: API 密钥
+  # timeout-seconds: 单次请求超时（秒）
+  ai:
+    enabled: true
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model: qwen-plus
+    api-key: your-api-key
+    timeout-seconds: 20
+  # ========== RAG 检索增强生成配置 ==========
+  # enabled: RAG开关，false 时 AI 客服不做知识库检索，仅使用基础 Prompt
+  # top-k: 向量检索返回的最大段落数
+  # min-score: 最低余弦相似度阈值（0~1），低于此值的结果被过滤
+  # faq-resource: 静态 FAQ 知识文档路径（classpath 资源）
+  # embedding-model: 向量嵌入模型名称（需要 base-url 和 api-key 支持）
+  rag:
+    enabled: true
+    top-k: 3
+    min-score: 0.5
+    faq-resource: classpath:rag/faq.md
+    embedding-model: text-embedding-v3
+  session:
+    redis-prefix: "login:token:"
+    sliding-expire: true
+  seckill:
+    lock-wait-ms: 150
+    lock-lease-ms: 3000
+  upload:
+    mode: local
+    local-path: ./uploads
+    public-prefix: /uploads
+  oss:
+    # mode=oss 时生效，示例：https://your-bucket.oss-cn-hangzhou.aliyuncs.com
+    base-url: https://example.com/life-review

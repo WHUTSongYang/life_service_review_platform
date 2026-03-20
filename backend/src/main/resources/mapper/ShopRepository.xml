@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lifereview.repository.ShopRepository">
+
+    <!-- 查询所有不重复的店铺类型，用于筛选下拉 -->
+    <select id="findDistinctTypes" resultType="string">
+        select distinct type from shops where type is not null and type &lt;&gt; '' order by type
+    </select>
+
+    <!-- 按名称和地址统计店铺数量，用于去重校验 -->
+    <select id="countByNameAndAddress" resultType="long">
+        select count(1) from shops where name = #{name} and address = #{address}
+    </select>
+
+    <!-- 按店主 ID 查询其名下店铺，按 ID 倒序 -->
+    <select id="findByOwnerUserIdOrderByIdDesc" resultType="com.lifereview.entity.Shop">
+        select * from shops where owner_user_id = #{ownerUserId} order by id desc
+    </select>
+
+    <!-- 分页搜索店铺：按类型、关键词（名称/地址）筛选 -->
+    <select id="searchShopsRecords" resultType="com.lifereview.entity.Shop">
+        select * from shops
+        where (#{type} is null or #{type} = '' or type = #{type})
+          and (#{keyword} is null or #{keyword} = ''
+               or lower(name) like lower(concat('%', #{keyword}, '%'))
+               or lower(coalesce(address, '')) like lower(concat('%', #{keyword}, '%')))
+        order by id desc
+        limit #{size} offset #{offset}
+    </select>
+
+    <!-- 统计搜索条件下的店铺总数，用于分页 -->
+    <select id="countSearchShops" resultType="long">
+        select count(1) from shops
+        where (#{type} is null or #{type} = '' or type = #{type})
+          and (#{keyword} is null or #{keyword} = ''
+               or lower(name) like lower(concat('%', #{keyword}, '%'))
+               or lower(coalesce(address, '')) like lower(concat('%', #{keyword}, '%')))
+    </select>
+</mapper>

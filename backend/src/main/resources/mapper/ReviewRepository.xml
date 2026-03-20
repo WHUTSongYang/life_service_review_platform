@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lifereview.repository.ReviewRepository">
+
+    <!-- 按店铺 ID 查询点评，按创建时间倒序 -->
+    <select id="findByShopIdOrderByCreatedAtDesc" resultType="com.lifereview.entity.Review">
+        select * from reviews where shop_id = #{shopId} order by created_at desc
+    </select>
+
+    <!-- 按用户 ID 查询点评，按创建时间倒序 -->
+    <select id="findByUserIdOrderByCreatedAtDesc" resultType="com.lifereview.entity.Review">
+        select * from reviews where user_id = #{userId} order by created_at desc
+    </select>
+
+    <!-- 计算店铺平均评分 -->
+    <select id="calcAvgScoreByShopId" resultType="double">
+        select coalesce(avg(score), 0) from reviews where shop_id = #{shopId}
+    </select>
+
+    <!-- 统计店铺点评数量 -->
+    <select id="countByShopId" resultType="long">
+        select count(1) from reviews where shop_id = #{shopId}
+    </select>
+
+    <!-- 热门点评分页：按点赞数、创建时间倒序 -->
+    <select id="findAllByOrderByLikeCountDescCreatedAtDescRecords" resultType="com.lifereview.entity.Review">
+        select * from reviews order by like_count desc, created_at desc limit #{size} offset #{offset}
+    </select>
+
+    <!-- 统计点评总数 -->
+    <select id="countAllReviews" resultType="long">
+        select count(1) from reviews
+    </select>
+
+    <!-- 热门点评搜索：按店铺名/点评内容、店铺类型筛选，按点赞数倒序 -->
+    <select id="searchHotRecords" resultType="com.lifereview.entity.Review">
+        select r.* from reviews r
+        join shops s on r.shop_id = s.id
+        where (#{keyword} is null or #{keyword} = ''
+               or lower(s.name) like lower(concat('%', #{keyword}, '%'))
+               or lower(r.content) like lower(concat('%', #{keyword}, '%')))
+          and (#{shopType} is null or #{shopType} = '' or s.type = #{shopType})
+        order by r.like_count desc, r.created_at desc
+        limit #{size} offset #{offset}
+    </select>
+
+    <!-- 统计热门点评搜索总数 -->
+    <select id="countHotRecords" resultType="long">
+        select count(1) from reviews r
+        join shops s on r.shop_id = s.id
+        where (#{keyword} is null or #{keyword} = ''
+               or lower(s.name) like lower(concat('%', #{keyword}, '%'))
+               or lower(r.content) like lower(concat('%', #{keyword}, '%')))
+          and (#{shopType} is null or #{shopType} = '' or s.type = #{shopType})
+    </select>
+
+    <!-- 最新点评搜索：按店铺名/点评内容、店铺类型筛选，按创建时间倒序 -->
+    <select id="searchLatestRecords" resultType="com.lifereview.entity.Review">
+        select r.* from reviews r
+        join shops s on r.shop_id = s.id
+        where (#{keyword} is null or #{keyword} = ''
+               or lower(s.name) like lower(concat('%', #{keyword}, '%'))
+               or lower(r.content) like lower(concat('%', #{keyword}, '%')))
+          and (#{shopType} is null or #{shopType} = '' or s.type = #{shopType})
+        order by r.created_at desc
+        limit #{size} offset #{offset}
+    </select>
+
+    <!-- 统计最新点评搜索总数 -->
+    <select id="countLatestRecords" resultType="long">
+        select count(1) from reviews r
+        join shops s on r.shop_id = s.id
+        where (#{keyword} is null or #{keyword} = ''
+               or lower(s.name) like lower(concat('%', #{keyword}, '%'))
+               or lower(r.content) like lower(concat('%', #{keyword}, '%')))
+          and (#{shopType} is null or #{shopType} = '' or s.type = #{shopType})
+    </select>
+</mapper>

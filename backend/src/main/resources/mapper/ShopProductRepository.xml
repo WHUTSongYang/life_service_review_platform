@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lifereview.repository.ShopProductRepository">
+
+    <!-- 按店铺 ID 查询已上架商品，按 ID 倒序 -->
+    <select id="findByShopIdAndEnabledTrueOrderByIdDesc" resultType="com.lifereview.entity.ShopProduct">
+        select * from shop_products where shop_id = #{shopId} and enabled = true order by id desc
+    </select>
+
+    <!-- 管理端商品搜索：按店铺、关键词筛选 -->
+    <select id="searchManageProducts" resultType="com.lifereview.entity.ShopProduct">
+        select * from shop_products
+        where (#{shopId} is null or shop_id = #{shopId})
+          and (#{keyword} is null or #{keyword} = ''
+               or lower(name) like lower(concat('%', #{keyword}, '%')))
+        order by id desc
+    </select>
+
+    <!-- 扣减库存：仅当商品启用且库存大于 0 时扣减 1 -->
+    <update id="decreaseStockIfAvailable">
+        update shop_products
+        set stock = stock - 1
+        where id = #{productId} and enabled = true and stock &gt; 0
+    </update>
+
+    <!-- 增加库存：按 delta 增量恢复 -->
+    <update id="increaseStock">
+        update shop_products set stock = stock + #{delta} where id = #{productId}
+    </update>
+</mapper>

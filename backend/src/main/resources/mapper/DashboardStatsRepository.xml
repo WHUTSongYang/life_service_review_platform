@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lifereview.repository.DashboardStatsRepository">
+
+    <!-- 按日统计指定店铺的已支付订单收入 -->
+    <select id="queryDailyRevenue" resultType="com.lifereview.dto.DailyRevenueQueryRow">
+        select date_format(po.updated_at, '%Y-%m-%d') as date,
+               coalesce(sum(po.amount), 0) as revenue
+        from product_orders po
+        where po.status = 'PAID'
+          and po.updated_at &gt;= #{startTime}
+          and po.updated_at &lt; #{endTime}
+          and po.shop_id in
+        <foreach collection="shopIds" item="shopId" open="(" separator="," close=")">
+            #{shopId}
+        </foreach>
+        group by date_format(po.updated_at, '%Y-%m-%d')
+        order by date_format(po.updated_at, '%Y-%m-%d') asc
+    </select>
+
+    <!-- 查询指定店铺在时间范围内的销量排行商品 -->
+    <select id="queryBestSellers" resultType="com.lifereview.dto.BestSellerItem">
+        select po.product_id as productId,
+               coalesce(sp.name, concat('商品#', po.product_id)) as productName,
+               count(1) as orderCount
+        from product_orders po
+                 left join shop_products sp on sp.id = po.product_id
+        where po.status = 'PAID'
+          and po.updated_at &gt;= #{startTime}
+          and po.updated_at &lt; #{endTime}
+          and po.shop_id in
+        <foreach collection="shopIds" item="shopId" open="(" separator="," close=")">
+            #{shopId}
+        </foreach>
+        group by po.product_id, sp.name
+        order by orderCount desc, po.product_id desc
+        limit #{limit}
+    </select>
+</mapper>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lifereview.repository.ShopApplyRequestRepository">
+
+    <!-- 按申请人 ID 查询申请，按创建时间倒序 -->
+    <select id="findByApplicantUserIdOrderByCreatedAtDesc" resultType="com.lifereview.entity.ShopApplyRequest">
+        select * from shop_apply_requests where applicant_user_id = #{applicantUserId} order by created_at desc
+    </select>
+
+    <!-- 按状态查询申请，按创建时间正序（先申请先处理） -->
+    <select id="findByStatusOrderByCreatedAtAsc" resultType="com.lifereview.entity.ShopApplyRequest">
+        select * from shop_apply_requests where status = #{status} order by created_at asc
+    </select>
+
+    <!-- 按 ID 和状态查询单条，用于乐观锁校验 -->
+    <select id="findOneByIdAndStatus" resultType="com.lifereview.entity.ShopApplyRequest">
+        select * from shop_apply_requests where id = #{id} and status = #{status} limit 1
+    </select>
+
+    <!-- 统计申请人同名称同地址同状态的申请数，用于去重 -->
+    <select id="countByApplicantUserIdAndNameAndAddressAndStatus" resultType="long">
+        select count(1) from shop_apply_requests
+        where applicant_user_id = #{applicantUserId}
+          and name = #{name}
+          and address = #{address}
+          and status = #{status}
+    </select>
+
+    <!-- 更新审核结果：状态、审核人、备注、审核时间，需匹配 expectedStatus 防并发 -->
+    <update id="updateReviewResult">
+        update shop_apply_requests
+        set status = #{status},
+            reviewer_user_id = #{reviewerUserId},
+            review_note = #{reviewNote},
+            reviewed_at = #{reviewedAt}
+        where id = #{id} and status = #{expectedStatus}
+    </update>
+</mapper>
