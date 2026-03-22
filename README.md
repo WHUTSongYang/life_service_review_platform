@@ -5,7 +5,7 @@
 本项目采用前后端分离架构：
 
 - 前端：`frontend`（Vue3 + Element Plus + Axios + Vue Router）
-- 后端：`backend`（Spring Boot 3 + Spring Web + JPA + MySQL）
+- 后端：`backend`（Spring Boot 3 + Spring Web + Mybatis + MySQL）
 - 存储：MySQL 8.0 + Redis（登录态 TTL + GEO 附近商户）
 - 可扩展：图片上传支持本地/OSS 两种模式，AI 帮写可切换到大模型 API（如 ChatGLM）
 
