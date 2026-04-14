@@ -1,26 +1,27 @@
-// 包声明：DTO 所在包
 package com.lifereview.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
-/** 店铺管理-更新店铺请求：名称、地址、图片、促销标识 */
+/**
+ * 商家在店铺管理后台更新店铺资料时的请求体。
+ */
 @Data
 public class ShopManageUpdateRequest {
-    // 字段说明：店铺名称，必填
+    /** 店铺名称，必填 */
     @NotBlank
     private String name;
-    // 字段说明：店铺类型，必填
+    /** 店铺类型，必填 */
     @NotBlank
     private String type;
-    // 字段说明：店铺封面图 URL，必填
+    /** 店铺封面图 URL，必填 */
     @NotBlank
     private String image;
-    // 字段说明：店铺地址，必填
+    /** 店铺地址，必填 */
     @NotBlank
     private String address;
-    // 字段说明：经度
+    /** 经度，可选 */
     private Double longitude;
-    // 字段说明：纬度
+    /** 纬度，可选 */
     private Double latitude;
 }

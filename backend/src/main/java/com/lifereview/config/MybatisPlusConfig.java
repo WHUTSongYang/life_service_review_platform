@@ -1,4 +1,3 @@
-// 包声明：配置类所在包
 package com.lifereview.config;
 
 import com.baomidou.mybatisplus.annotation.DbType;
@@ -7,17 +6,24 @@ import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerIntercept
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** MyBatis-Plus 配置：启用 MySQL 分页插件，支持 Page 分页查询 */
+/**
+ * MyBatis-Plus 全局配置。
+ * <p>
+ * 注册分页插件，使 Mapper 中使用 {@code Page} 进行分页查询时自动拼接 MySQL 分页 SQL。
+ * </p>
+ */
 @Configuration
 public class MybatisPlusConfig {
 
-    /** 分页拦截器 Bean，拦截 MyBatis 查询并自动拼接 LIMIT 子句 */
+    /**
+     * 构建 MyBatis-Plus 拦截器链，并加入 MySQL 分页内部拦截器。
+     *
+     * @return 已配置分页能力的 {@link MybatisPlusInterceptor}
+     */
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
-        // 创建 MyBatis-Plus 拦截器链
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        // 添加 MySQL 分页内部拦截器
-        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL)); // MySQL 方言分页
         return interceptor;
     }
 }

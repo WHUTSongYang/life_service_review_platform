@@ -1,20 +1,29 @@
-# 服务端口
+# 公共配置（与环境无关）。环境相关项见 application-dev.yml / application-prod.yml。
+# 未指定 active 时默认使用 dev（本机开发）。
 server:
   port: 8080
 
 spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/life_service_review_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: root
-    password: 1234
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  data:
-    redis:
-      host: 192.168.88.101
-      port: 6379
-      database: 1
-      password: 123321
-# MyBatis-Plus 配置
+  profiles:
+    #dev是windows  prod是centos
+    default: prod
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:life-review-seckill}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.lifereview.dto
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.lifereview.dto.SeckillPurchaseMessage
+      auto-offset-reset: earliest
+
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
   configuration:
@@ -22,10 +31,8 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: auto
+
 app:
-  admin:
-    # 管理员用户ID列表，逗号分隔；可调用 /api/admin/seed/*
-    user-ids: 1
   cache:
     shop-categories-key: "shop:categories"
     shop-categories-ttl-seconds: 3600
@@ -40,7 +47,7 @@ app:
     lock-ttl-seconds: 5
     double-delete-delay-ms: 400
   jwt:
-    secret: your-very-long-jwt-secret-key-change-me-1234567890
+    secret: ${APP_JWT_SECRET:your-very-long-jwt-secret-key-change-me-1234567890}
     expire-seconds: 604800
   # ========== AI 大模型配置（LangChain4j） ==========
   # enabled: 总开关，false 时所有 AI 功能走本地兜底，不调用远程模型
@@ -49,11 +56,17 @@ app:
   # api-key: API 密钥
   # timeout-seconds: 单次请求超时（秒）
   ai:
-    enabled: true
-    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-    model: qwen-plus
-    api-key: your-api-key
-    timeout-seconds: 20
+    enabled: ${APP_AI_ENABLED:true}
+    base-url: ${APP_AI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    model: ${APP_AI_MODEL:qwen-plus}
+    api-key: ${APP_AI_API_KEY:sk-479b9d67620941f0b44290c6deebdd75}
+    timeout-seconds: ${APP_AI_TIMEOUT_SECONDS:20}
+    router-max-tokens: 256
+    recommend-shop-limit: 8
+    recommend-product-per-shop: 3
+    merchant-search-page-size: 10
+    nearby-default-radius-km: 5
+    nearby-default-limit: 15
   # ========== RAG 检索增强生成配置 ==========
   # enabled: RAG开关，false 时 AI 客服不做知识库检索，仅使用基础 Prompt
   # top-k: 向量检索返回的最大段落数
@@ -61,21 +74,34 @@ app:
   # faq-resource: 静态 FAQ 知识文档路径（classpath 资源）
   # embedding-model: 向量嵌入模型名称（需要 base-url 和 api-key 支持）
   rag:
-    enabled: true
+    enabled: ${APP_RAG_ENABLED:true}
     top-k: 3
     min-score: 0.5
     faq-resource: classpath:rag/faq.md
-    embedding-model: text-embedding-v3
+    embedding-model: ${APP_RAG_EMBEDDING_MODEL:text-embedding-v3}
   session:
     redis-prefix: "login:token:"
     sliding-expire: true
+  captcha:
+    redis-prefix: "captcha:id:"
+    ttl-seconds: 300
   seckill:
     lock-wait-ms: 150
     lock-lease-ms: 3000
+  kafka:
+    seckill:
+      topic: seckill-purchase
+      result-ttl-hours: 48
+  # 设置订单超时取消
+  order:
+    auto-cancel:
+      timeout-minutes: 15
+      scan-interval-ms: 60000
+      initial-delay-ms: 30000
   upload:
     mode: local
+    #上传文件的路径
     local-path: ./uploads
     public-prefix: /uploads
   oss:
-    # mode=oss 时生效，示例：https://your-bucket.oss-cn-hangzhou.aliyuncs.com
     base-url: https://example.com/life-review

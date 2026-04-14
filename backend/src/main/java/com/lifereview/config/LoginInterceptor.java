@@ -1,4 +1,3 @@
-// 包声明：配置类所在包
 package com.lifereview.config;
 
 import com.lifereview.dto.AuthPrincipal;
@@ -10,38 +9,42 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * 登录拦截器。
- * 拦截 /api/** 路径，白名单内的请求直接放行，其余需在 Authorization 头携带 Bearer token。
- * 校验通过后将 principalType、principalId、currentUserId 或 currentAdminId、isSuperAdmin 写入 request 属性，供 Controller 使用。
+ * 登录态拦截器。
+ * <p>
+ * 对 {@code /api/**} 请求在到达 Controller 前进行 JWT 校验：白名单路径直接放行；
+ * 其余请求须在 {@code Authorization} 头携带 {@code Bearer} Token。校验成功后将
+ * {@code principalType}、{@code principalId}、{@code currentUserId} 或 {@code currentAdminId}、
+ * {@code isSuperAdmin} 写入 request 属性，供后续控制器读取。
+ * </p>
  */
 @Component
 @RequiredArgsConstructor
 public class LoginInterceptor implements HandlerInterceptor {
-    // 认证服务，用于校验 JWT token
+
+    /** 认证服务，用于解析与校验 JWT */
     private final AuthService authService;
 
     /**
-     * 白名单放行：OPTIONS 预检、/api/auth 认证相关、/api/ai AI 接口、部分 GET 公开接口（店铺列表、详情、点评等）、/uploads/ 静态资源。
-     * 其他请求需 Bearer token，校验失败返回 401。
+     * 在 Controller 处理前执行：白名单放行或校验 Bearer Token 并注入身份信息。
+     *
+     * @param request  当前 HTTP 请求
+     * @param response 当前 HTTP 响应（未登录或 Token 无效时写入 401）
+     * @param handler  即将调用的处理器（本实现未使用）
+     * @return {@code true} 表示继续处理链；{@code false} 表示已响应客户端并终止
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        // 获取请求 URI 和 HTTP 方法
         String uri = request.getRequestURI();
         String method = request.getMethod();
-        // OPTIONS 预检请求直接放行
         if ("OPTIONS".equalsIgnoreCase(method)) {
-            return true;
+            return true; // CORS 预检直接放行
         }
-        // 认证相关接口（注册、登录等）放行
         if (uri.startsWith("/api/auth")) {
-            return true;
+            return true; // 注册、登录等认证接口放行
         }
-        // AI 接口放行
         if (uri.startsWith("/api/ai")) {
-            return true;
+            return true; // AI 相关接口放行
         }
-        // GET 公开接口：店铺列表、类型、热门点评、最新点评、附近店铺、店铺详情、店铺点评、店铺商品、点评详情、点评评论  不需要登录即可查看
         if ("GET".equalsIgnoreCase(method)) {
             if ("/api/shops".equals(uri)
                     || "/api/shops/types".equals(uri)
@@ -53,43 +56,33 @@ public class LoginInterceptor implements HandlerInterceptor {
                     || uri.matches("^/api/shops/\\d+/products$")
                     || uri.matches("^/api/reviews/\\d+$")
                     || uri.matches("^/api/reviews/\\d+/comments$")) {
-                return true;
+                return true; // 公开只读资源无需登录
             }
         }
-        // 静态资源路径放行
         if (uri.startsWith("/uploads/")) {
-            return true;
+            return true; // 本地上传静态资源映射放行
         }
 
-        // 获取 Authorization 头
         String authHeader = request.getHeader("Authorization");
-        // 无 token 或格式错误（非 Bearer）返回 401
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            response.setStatus(401);
+            response.setStatus(401); // 缺少或格式错误的凭证
             return false;
         }
-        // 提取 Bearer 后的 token 字符串
         String token = authHeader.substring(7);
-        // 校验 token，解析出用户或管理员身份
         AuthPrincipal principal = authService.validateToken(token);
-        // 校验失败返回 401
         if (principal == null) {
-            response.setStatus(401);
+            response.setStatus(401); // Token 无效或已过期
             return false;
         }
-        // 将身份信息写入 request，供后续 Controller 使用
         request.setAttribute("principalType", principal.getPrincipalType());
         request.setAttribute("principalId", principal.getPrincipalId());
         request.setAttribute("isSuperAdmin", principal.isSuperAdmin());
-        // 若为普通用户，写入 currentUserId
         if (principal.isUser()) {
-            request.setAttribute("currentUserId", principal.getUserId());
+            request.setAttribute("currentUserId", principal.getUserId()); // 普通用户 ID
         }
-        // 若为管理员，写入 currentAdminId
         if (principal.isAdmin()) {
-            request.setAttribute("currentAdminId", principal.getAdminId());
+            request.setAttribute("currentAdminId", principal.getAdminId()); // 管理员 ID
         }
-        // 放行请求
         return true;
     }
 }

@@ -20,16 +20,26 @@ import java.util.stream.Collectors;
 
 /**
  * 点评评论服务实现类。
- * 负责点评下的评论发表与列表查询。
+ * <p>负责点评下的评论列表查询与发表评论，含用户昵称展示与存在性校验。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class ReviewCommentServiceImpl implements ReviewCommentService {
 
+    /** 评论数据访问 */
     private final ReviewCommentRepository reviewCommentRepository;
+    /** 点评数据访问 */
     private final ReviewRepository reviewRepository;
+    /** 用户数据访问 */
     private final UserRepository userRepository;
 
+    /**
+     * 按点评 ID 查询评论列表（按创建时间升序，含用户昵称）。
+     *
+     * @param reviewId 点评主键
+     * @return 评论展示项列表，无评论时为空列表
+     * @throws IllegalArgumentException 点评不存在时抛出
+     */
     @Override
     public List<ReviewCommentItem> listByReviewId(Long reviewId) {
         ensureReviewExists(reviewId);
@@ -37,7 +47,7 @@ public class ReviewCommentServiceImpl implements ReviewCommentService {
         if (comments.isEmpty()) {
             return List.of();
         }
-        // 批量查询评论用户昵称
+        // 批量查询评论用户昵称，避免 N+1
         Set<Long> userIds = comments.stream().map(ReviewComment::getUserId).collect(Collectors.toSet());
         Map<Long, User> users = userRepository.findAllById(userIds).stream().collect(Collectors.toMap(User::getId, u -> u));
         return comments.stream().map(item -> ReviewCommentItem.builder()
@@ -50,6 +60,15 @@ public class ReviewCommentServiceImpl implements ReviewCommentService {
                 .build()).toList();
     }
 
+    /**
+     * 当前用户在某条点评下发表评论。
+     *
+     * @param currentUserId 当前登录用户 ID
+     * @param reviewId      点评主键
+     * @param req           评论内容与参数
+     * @return 新建评论的展示项（含昵称）
+     * @throws IllegalArgumentException 用户或点评不存在时抛出
+     */
     @Override
     @Transactional
     public ReviewCommentItem create(Long currentUserId, Long reviewId, ReviewCommentCreateRequest req) {
@@ -71,7 +90,12 @@ public class ReviewCommentServiceImpl implements ReviewCommentService {
                 .build();
     }
 
-    // 校验点评是否存在
+    /**
+     * 校验点评存在。
+     *
+     * @param reviewId 点评主键
+     * @throws IllegalArgumentException 点评不存在时抛出
+     */
     private void ensureReviewExists(Long reviewId) {
         Review review = reviewRepository.findById(reviewId).orElse(null);
         if (review == null) {
@@ -79,7 +103,12 @@ public class ReviewCommentServiceImpl implements ReviewCommentService {
         }
     }
 
-    // 校验用户是否存在
+    /**
+     * 校验用户存在。
+     *
+     * @param userId 用户主键
+     * @throws IllegalArgumentException 用户不存在时抛出
+     */
     private void ensureUserExists(Long userId) {
         if (!userRepository.existsById(userId)) {
             throw new IllegalArgumentException("用户不存在");

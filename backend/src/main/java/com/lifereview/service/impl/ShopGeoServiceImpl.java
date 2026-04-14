@@ -23,18 +23,24 @@ import java.util.stream.Collectors;
 
 /**
  * 店铺地理位置服务实现类。
- * 基于 Redis GEO 实现附近店铺搜索，启动时从数据库加载 GEO 索引。
+ * <p>基于 Redis GEO 维护店铺坐标索引与附近搜索；启动时从数据库全量加载；查询失败或结果异常时回退 Haversine 数据库扫描。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class ShopGeoServiceImpl implements ShopGeoService {
 
-    // Redis GEO 键
+    /** Redis 中存储所有店铺坐标的 GEO 键名 */
     private static final String SHOP_GEO_KEY = "geo:shops";
+    /** 日志 */
     private static final Logger log = LoggerFactory.getLogger(ShopGeoServiceImpl.class);
+    /** Redis 模板 */
     private final StringRedisTemplate stringRedisTemplate;
+    /** 店铺仓储 */
     private final ShopRepository shopRepository;
 
+    /**
+     * 启动时从数据库加载 Redis GEO 索引（Redis 不可用时跳过）。
+     */
     @PostConstruct
     public void loadGeoIndex() {
         try {
@@ -44,6 +50,11 @@ public class ShopGeoServiceImpl implements ShopGeoService {
         }
     }
 
+    /**
+     * 将单店坐标同步到 Redis GEO；无坐标则从索引中移除。
+     *
+     * @param shop 店铺实体（需含 id；经纬度可为空表示下线坐标）
+     */
     @Override
     public void syncShopLocation(Shop shop) {
         if (shop.getId() == null) {
@@ -61,6 +72,16 @@ public class ShopGeoServiceImpl implements ShopGeoService {
         }
     }
 
+    /**
+     * 按经纬度与半径查询附近店铺（千米），返回店铺 ID 与距离；优先 Redis GEO，失败则数据库回退。
+     *
+     * @param longitude 中心点经度
+     * @param latitude  中心点纬度
+     * @param radiusKm  搜索半径（千米），须大于 0
+     * @param limit     最大返回条数
+     * @return 按距离升序的店铺距离列表
+     * @throws IllegalArgumentException 半径不大于 0 时抛出
+     */
     @Override
     public List<ShopDistance> searchNearby(double longitude, double latitude, double radiusKm, long limit) {
         if (radiusKm <= 0) {
@@ -93,6 +114,15 @@ public class ShopGeoServiceImpl implements ShopGeoService {
         return result;
     }
 
+    /**
+     * 执行 Redis GEO 半径搜索（含距离、升序、limit）。
+     *
+     * @param longitude 中心经度
+     * @param latitude  中心纬度
+     * @param radiusKm  半径千米
+     * @param limit     条数上限（内部至少为 1）
+     * @return Redis 查询结果，可能为 null
+     */
     private GeoResults<RedisGeoCommands.GeoLocation<String>> doSearch(double longitude, double latitude, double radiusKm, long limit) {
         return stringRedisTemplate.opsForGeo().search(
                 SHOP_GEO_KEY,
@@ -102,6 +132,9 @@ public class ShopGeoServiceImpl implements ShopGeoService {
         );
     }
 
+    /**
+     * 遍历全表店铺并同步到 GEO 索引。
+     */
     private void reloadGeoIndexFromDb() {
         int loaded = 0;
         for (Shop shop : shopRepository.findAll()) {
@@ -111,6 +144,15 @@ public class ShopGeoServiceImpl implements ShopGeoService {
         log.info("Redis GEO index reloaded from DB, loadedShops={}", loaded);
     }
 
+    /**
+     * 使用 Haversine 在内存中计算距离并筛选半径内店铺（Redis 不可用时的回退路径）。
+     *
+     * @param longitude 中心经度
+     * @param latitude  中心纬度
+     * @param radiusKm  半径千米
+     * @param limit     最大条数
+     * @return 距离升序的店铺距离列表
+     */
     private List<ShopDistance> searchNearbyFromDb(double longitude, double latitude, double radiusKm, long limit) {
         double radiusMeters = radiusKm * 1000.0;
         List<ShopDistance> fallbackResult = shopRepository.findAll().stream()
@@ -124,7 +166,15 @@ public class ShopGeoServiceImpl implements ShopGeoService {
         return fallbackResult;
     }
 
-    // 使用 Haversine 公式计算两点间距离（米）
+    /**
+     * Haversine 公式计算两点球面距离（米）。
+     *
+     * @param lat1 点 1 纬度
+     * @param lon1 点 1 经度
+     * @param lat2 点 2 纬度
+     * @param lon2 点 2 经度
+     * @return 距离（米）
+     */
     private double distanceMeters(double lat1, double lon1, double lat2, double lon2) {
         double earthRadius = 6371000.0;
         double dLat = Math.toRadians(lat2 - lat1);
@@ -136,6 +186,12 @@ public class ShopGeoServiceImpl implements ShopGeoService {
         return earthRadius * c;
     }
 
+    /**
+     * 米转千米并保留三位小数。
+     *
+     * @param meters 距离（米）
+     * @return 距离（千米）
+     */
     private double metersToKm(double meters) {
         return Math.round((meters / 1000.0) * 1000) / 1000.0;
     }

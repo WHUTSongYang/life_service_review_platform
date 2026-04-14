@@ -34,15 +34,6 @@
                 fit="cover"
               />
             </el-form-item>
-            <el-form-item label="定位坐标">
-              <div class="loc-wrap">
-                <el-button type="primary" plain :loading="locating" @click="locateApplyShop">定位并录入经纬度</el-button>
-                <span v-if="hasLocation">
-                  经度 {{ applyForm.longitude }}，纬度 {{ applyForm.latitude }}
-                </span>
-                <span v-else>请点击按钮定位后再提交</span>
-              </div>
-            </el-form-item>
             <el-button type="primary" @click="submitShopApply">提交申请</el-button>
           </el-form>
         </el-tab-pane>
@@ -91,7 +82,6 @@ const tab = ref("apply");
 const myApplyList = ref([]);
 const pendingApplyList = ref([]);
 const shopTypes = ref([]);
-const locating = ref(false);
 const uploadAction = `${baseURL}/api/files/upload`;
 const uploadHeaders = authHeaders();
 const isSuperAdmin = computed(() => localStorage.getItem("isSuperAdmin") === "true");
@@ -100,12 +90,8 @@ const applyForm = reactive({
   name: "",
   type: "",
   image: "",
-  address: "",
-  longitude: null,
-  latitude: null
+  address: ""
 });
-
-const hasLocation = computed(() => applyForm.longitude != null && applyForm.latitude != null);
 
 function resolveImage(path) {
   if (!path) return "";
@@ -120,25 +106,6 @@ function handleApplyImageUploadSuccess(response) {
   }
   applyForm.image = response.data.url;
   ElMessage.success("商铺图片上传成功");
-}
-
-function locateApplyShop() {
-  if (!navigator.geolocation) {
-    ElMessage.warning("浏览器不支持定位");
-    return;
-  }
-  locating.value = true;
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      applyForm.longitude = Number(position.coords.longitude.toFixed(6));
-      applyForm.latitude = Number(position.coords.latitude.toFixed(6));
-      locating.value = false;
-    },
-    () => {
-      locating.value = false;
-      ElMessage.error("定位失败，请确认浏览器定位权限");
-    }
-  );
 }
 
 async function loadShopTypes() {
@@ -159,18 +126,18 @@ async function submitShopApply() {
     ElMessage.warning("请完整填写名称、类型、地址并上传商铺图片");
     return;
   }
-  if (!hasLocation.value) {
-    ElMessage.warning("请先定位并录入经纬度");
-    return;
-  }
-  await unwrap(http.post("/api/merchant/shops/apply", applyForm));
+  const payload = {
+    name: applyForm.name,
+    type: applyForm.type,
+    image: applyForm.image,
+    address: applyForm.address
+  };
+  await unwrap(http.post("/api/merchant/shops/apply", payload));
   ElMessage.success("申请已提交");
   applyForm.name = "";
   applyForm.type = "";
   applyForm.image = "";
   applyForm.address = "";
-  applyForm.longitude = null;
-  applyForm.latitude = null;
   tab.value = "mine";
   await loadMyApplies();
 }
@@ -225,10 +192,4 @@ onMounted(async () => {
   max-width: 760px;
 }
 
-.loc-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
 </style>

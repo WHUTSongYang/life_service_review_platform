@@ -23,19 +23,33 @@ import java.util.stream.Collectors;
 
 /**
  * 店铺入驻申请服务实现类。
- * 负责商户提交申请、查看我的申请、超级管理员审核（通过/驳回）。
+ * <p>负责商户提交申请、查看我的申请、超级管理员审核（通过/驳回），并与 GEO、分类缓存联动。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class ShopApplyServiceImpl implements ShopApplyService {
 
+    /** 入驻申请仓储 */
     private final ShopApplyRequestRepository shopApplyRequestRepository;
+    /** 店铺仓储 */
     private final ShopRepository shopRepository;
+    /** 用户仓储 */
     private final UserRepository userRepository;
+    /** 店铺地理位置同步 */
     private final ShopGeoService shopGeoService;
+    /** 店铺分类校验与缓存 */
     private final ShopCategoryCacheService shopCategoryCacheService;
+    /** 通用缓存操作（双删、bump 版本等） */
     private final CacheOpsService cacheOpsService;
 
+    /**
+     * 提交店铺入驻申请。
+     *
+     * @param userId 申请人用户 ID
+     * @param req    店铺名称、类型、图片、地址与经纬度等
+     * @return 申请展示项
+     * @throws IllegalArgumentException 用户不存在、参数不合法、重复申请或商铺已存在时抛出
+     */
     @Override
     @Transactional
     public ShopApplyItem submitApply(Long userId, ShopApplyCreateRequest req) {
@@ -70,18 +84,43 @@ public class ShopApplyServiceImpl implements ShopApplyService {
         return mapItems(List.of(saved)).get(0);
     }
 
+    /**
+     * 查询当前用户的申请列表（按创建时间倒序）。
+     *
+     * @param userId 用户主键
+     * @return 申请展示项列表
+     * @throws IllegalArgumentException 用户不存在时抛出
+     */
     @Override
     public List<ShopApplyItem> listMine(Long userId) {
         ensureUserExists(userId);
         return mapItems(shopApplyRequestRepository.findByApplicantUserIdOrderByCreatedAtDesc(userId));
     }
 
+    /**
+     * 超级管理员查看待审核申请列表。
+     *
+     * @param operatorId  操作者 ID（当前实现未用于过滤，预留）
+     * @param superAdmin  是否为超级管理员
+     * @return 待审核申请列表
+     * @throws IllegalArgumentException 非超级管理员时抛出
+     */
     @Override
     public List<ShopApplyItem> listPending(Long operatorId, boolean superAdmin) {
         assertSuperAdmin(superAdmin);
         return mapItems(shopApplyRequestRepository.findByStatusOrderByCreatedAtAsc(ShopApplyStatus.PENDING));
     }
 
+    /**
+     * 通过申请：创建店铺、同步 GEO、更新申请状态并清理相关缓存。
+     *
+     * @param operatorId  审核人用户 ID
+     * @param superAdmin  是否为超级管理员
+     * @param applyId     申请主键
+     * @param reviewNote  审核备注，可为 null
+     * @return 更新后的申请展示项
+     * @throws IllegalArgumentException 权限不足、申请状态非法、并发更新失败或同名同址已存在（自动驳回）等
+     */
     @Override
     @Transactional
     public ShopApplyItem approve(Long operatorId, boolean superAdmin, Long applyId, String reviewNote) {
@@ -120,6 +159,16 @@ public class ShopApplyServiceImpl implements ShopApplyService {
         return mapItems(List.of(approved)).get(0);
     }
 
+    /**
+     * 驳回申请并更新状态与审核信息。
+     *
+     * @param operatorId  审核人用户 ID
+     * @param superAdmin  是否为超级管理员
+     * @param applyId     申请主键
+     * @param reviewNote  驳回原因或备注，可为 null
+     * @return 更新后的申请展示项
+     * @throws IllegalArgumentException 权限不足、申请状态非法或并发更新失败时抛出
+     */
     @Override
     @Transactional
     public ShopApplyItem reject(Long operatorId, boolean superAdmin, Long applyId, String reviewNote) {
@@ -134,6 +183,12 @@ public class ShopApplyServiceImpl implements ShopApplyService {
         return mapItems(List.of(rejected)).get(0);
     }
 
+    /**
+     * 将申请实体列表转为展示项（填充申请人、审核人昵称）。
+     *
+     * @param requests 申请实体列表
+     * @return 展示项列表
+     */
     private List<ShopApplyItem> mapItems(List<ShopApplyRequest> requests) {
         if (requests.isEmpty()) {
             return List.of();
@@ -171,21 +226,44 @@ public class ShopApplyServiceImpl implements ShopApplyService {
         return result;
     }
 
+    /**
+     * 校验用户存在。
+     *
+     * @param userId 用户主键
+     * @throws IllegalArgumentException 用户不存在时抛出
+     */
     private void ensureUserExists(Long userId) {
         if (!userRepository.existsById(userId)) {
             throw new IllegalArgumentException("用户不存在");
         }
     }
 
+    /**
+     * 校验超级管理员权限。
+     *
+     * @param superAdmin 是否为超级管理员
+     * @throws IllegalArgumentException 非超级管理员时抛出
+     */
     private void assertSuperAdmin(boolean superAdmin) {
         if (!superAdmin) {
             throw new IllegalArgumentException("仅超级管理员可操作");
         }
     }
 
+    /**
+     * 校验经纬度：允许不传；若传则必须经纬度同时存在且范围合法。
+     *
+     * @param longitude 经度
+     * @param latitude  纬度
+     * @throws IllegalArgumentException 仅传其一或超出 WGS84 合法范围时抛出
+     */
     private void validateLocation(Double longitude, Double latitude) {
+        // 允许前端不上传定位信息
+        if (longitude == null && latitude == null) {
+            return;
+        }
         if (longitude == null || latitude == null) {
-            throw new IllegalArgumentException("请先定位录入经纬度后再提交");
+            throw new IllegalArgumentException("经纬度需同时传入");
         }
         if (longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) {
             throw new IllegalArgumentException("经纬度不合法");

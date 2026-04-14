@@ -1,15 +1,16 @@
-// 包声明：DTO 所在包
 package com.lifereview.dto;
 
 import lombok.Data;
 
-/** 畅销商品统计项：商品 id、名称、支付订单数 */
+/**
+ * 管理端或统计接口中的畅销商品条目，汇总销量维度数据。
+ */
 @Data
 public class BestSellerItem {
-    // 字段说明：商品主键 ID
+    /** 商品主键 ID */
     private Long productId;
-    // 字段说明：商品名称
+    /** 商品展示名称 */
     private String productName;
-    // 字段说明：已支付订单数量
+    /** 已支付订单数量（或等价销量统计口径） */
     private Long orderCount;
 }

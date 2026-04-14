@@ -13,13 +13,22 @@
           <el-form-item label="密码">
             <el-input v-model="loginForm.password" type="password" show-password />
           </el-form-item>
-          <el-form-item label="验证码登录">
-            <el-input v-model="loginForm.code" placeholder="演示验证码 123456" />
+          <el-form-item label="验证码">
+            <div class="captcha-row">
+              <el-input
+                v-model="loginForm.captchaCode"
+                placeholder="右侧 4 位字母或数字"
+                maxlength="4"
+                class="captcha-input"
+                @keyup.enter="loginByPassword"
+              />
+              <div class="captcha-img-wrap" @click="fetchCaptcha" title="点击刷新">
+                <img v-if="captchaImageSrc" :src="captchaImageSrc" alt="验证码" class="captcha-img" />
+                <span v-else class="captcha-placeholder">加载中…</span>
+              </div>
+            </div>
           </el-form-item>
-          <el-space>
-            <el-button type="success" @click="loginByPassword">密码登录</el-button>
-            <el-button @click="loginByCode">验证码登录</el-button>
-          </el-space>
+          <el-button type="success" @click="loginByPassword">登录</el-button>
         </el-form>
         <el-form v-else :model="adminLoginForm" label-width="90px">
           <el-form-item label="管理员账号">
@@ -54,7 +63,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from "vue";
+import { ref, reactive, watch, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import http, { unwrap } from "../api/http";
 import { useRoute, useRouter } from "vue-router";
@@ -67,10 +76,12 @@ const modeOptions = [
   { label: "管理员登录", value: "admin" }
 ];
 const activeTab = ref("login");
+const captchaId = ref("");
+const captchaImageSrc = ref("");
 const loginForm = reactive({
   account: "",
   password: "",
-  code: "123456"
+  captchaCode: ""
 });
 const adminLoginForm = reactive({
   username: "",
@@ -83,9 +94,30 @@ const registerForm = reactive({
   confirmPassword: ""
 });
 
-watch(loginMode, () => {
+watch(loginMode, (v) => {
   activeTab.value = "login";
+  if (v === "user") {
+    fetchCaptcha();
+  }
 });
+
+onMounted(() => {
+  if (loginMode.value === "user") {
+    fetchCaptcha();
+  }
+});
+
+async function fetchCaptcha() {
+  try {
+    const data = await unwrap(http.get("/api/auth/captcha"));
+    captchaId.value = data.captchaId;
+    captchaImageSrc.value = "data:image/png;base64," + data.imageBase64;
+    loginForm.captchaCode = "";
+  } catch (_e) {
+    captchaImageSrc.value = "";
+    ElMessage.error("验证码加载失败");
+  }
+}
 
 async function register() {
   if (registerForm.password !== registerForm.confirmPassword) {
@@ -103,22 +135,30 @@ async function register() {
   ElMessage.success("注册成功，请登录");
   activeTab.value = "login";
   loginForm.account = registerForm.account;
+  fetchCaptcha();
 }
 
 async function loginByPassword() {
-  const data = await unwrap(http.post("/api/auth/login", { account: loginForm.account, password: loginForm.password }));
-  applyLoginState(data, "用户");
-  window.dispatchEvent(new Event("auth-change"));
-  ElMessage.success("登录成功");
-  router.push(route.query.redirect || "/shops");
-}
-
-async function loginByCode() {
-  const data = await unwrap(http.post("/api/auth/code-login", { account: loginForm.account, code: loginForm.code }));
-  applyLoginState(data, "用户");
-  window.dispatchEvent(new Event("auth-change"));
-  ElMessage.success("登录成功");
-  router.push(route.query.redirect || "/shops");
+  if (!loginForm.captchaCode || loginForm.captchaCode.trim().length < 4) {
+    ElMessage.warning("请输入 4 位图形验证码");
+    return;
+  }
+  try {
+    const data = await unwrap(
+      http.post("/api/auth/login", {
+        account: loginForm.account,
+        password: loginForm.password,
+        captchaId: captchaId.value,
+        captchaCode: loginForm.captchaCode.trim()
+      })
+    );
+    applyLoginState(data, "用户");
+    window.dispatchEvent(new Event("auth-change"));
+    ElMessage.success("登录成功");
+    router.push(route.query.redirect || "/shops");
+  } catch (_e) {
+    fetchCaptcha();
+  }
 }
 
 async function loginAsAdmin() {
@@ -156,5 +196,43 @@ function applyLoginState(data, fallbackNickname) {
 .auth-header {
   font-size: 16px;
   font-weight: 600;
+}
+
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.captcha-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.captcha-img-wrap {
+  flex-shrink: 0;
+  width: 120px;
+  height: 44px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--el-fill-color-light);
+}
+
+.captcha-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.captcha-placeholder {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 </style>

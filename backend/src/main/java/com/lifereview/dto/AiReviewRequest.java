@@ -1,18 +1,19 @@
-// 包声明：DTO 所在包
 package com.lifereview.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
-/** AI 帮写点评请求：shopName、shopType 必填，AI 据此生成评价文案 */
+/**
+ * AI 辅助生成点评文案的请求体，根据店铺名称与类型生成合适用语。
+ */
 @Data
 public class AiReviewRequest {
 
-    /** 店铺名称，如"海底捞火锅"、"优剪理发" */
+    /** 目标店铺名称，例如餐饮、美发等门店名 */
     @NotBlank
     private String shopName;
 
-    /** 店铺类型，如"餐饮"、"美发"、"酒店"、"KTV" */
+    /** 店铺业态或类型，例如餐饮、美发、酒店、KTV 等，用于文风与要点 */
     @NotBlank
     private String shopType;
 }

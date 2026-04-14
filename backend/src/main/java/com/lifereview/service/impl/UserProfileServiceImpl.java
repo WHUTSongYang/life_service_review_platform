@@ -21,22 +21,40 @@ import java.util.stream.Collectors;
 
 /**
  * 用户资料服务实现类。
- * 负责用户资料查询、更新，支持手机/邮箱重复校验。
+ * <p>负责用户资料查询与更新（昵称、手机、邮箱占用校验），以及「我的点评」列表组装。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class UserProfileServiceImpl implements UserProfileService {
 
+    /** 用户仓储 */
     private final UserRepository userRepository;
+    /** 点评仓储 */
     private final ReviewRepository reviewRepository;
+    /** 店铺仓储 */
     private final ShopRepository shopRepository;
 
+    /**
+     * 查询用户资料。
+     *
+     * @param userId 用户主键
+     * @return 资料 DTO
+     * @throws IllegalArgumentException 用户不存在时抛出
+     */
     @Override
     public UserProfileItem getProfile(Long userId) {
         User user = ensureUserExists(userId);
         return mapProfile(user);
     }
 
+    /**
+     * 更新昵称、手机、邮箱；手机与邮箱与「其他用户」冲突时拒绝。
+     *
+     * @param userId 用户主键
+     * @param req    可选字段更新请求
+     * @return 更新后的资料
+     * @throws IllegalArgumentException 用户不存在、昵称为空或联系方式被占用时抛出
+     */
     @Override
     @Transactional
     public UserProfileItem updateProfile(Long userId, UserProfileUpdateRequest req) {
@@ -67,6 +85,13 @@ public class UserProfileServiceImpl implements UserProfileService {
         return mapProfile(userRepository.save(user));
     }
 
+    /**
+     * 查询当前用户发表的点评列表（店铺信息批量填充）。
+     *
+     * @param userId 用户主键
+     * @return 与热门列表同结构的展示项（用户昵称字段此处置空由调用方决定展示）
+     * @throws IllegalArgumentException 用户不存在时抛出
+     */
     @Override
     public List<HotReviewItem> listMyReviews(Long userId) {
         ensureUserExists(userId);
@@ -95,11 +120,23 @@ public class UserProfileServiceImpl implements UserProfileService {
         }).toList();
     }
 
+    /**
+     * 可选字符串去空白；空串视为 null。
+     *
+     * @param value 原始字符串（调用方保证非 null 时再 trim）
+     * @return 去空白后的非空串，或 null
+     */
     private String cleanOptional(String value) {
         String cleaned = value.trim();
         return cleaned.isEmpty() ? null : cleaned;
     }
 
+    /**
+     * 用户实体转资料 DTO。
+     *
+     * @param user 用户实体
+     * @return 资料项
+     */
     private UserProfileItem mapProfile(User user) {
         return UserProfileItem.builder()
                 .id(user.getId())
@@ -109,6 +146,13 @@ public class UserProfileServiceImpl implements UserProfileService {
                 .build();
     }
 
+    /**
+     * 按 ID 查询用户，不存在抛异常。
+     *
+     * @param userId 用户主键
+     * @return 用户实体
+     * @throws IllegalArgumentException 不存在时抛出
+     */
     private User ensureUserExists(Long userId) {
         return userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("用户不存在"));
     }

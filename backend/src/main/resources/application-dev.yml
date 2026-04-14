@@ -1,0 +1,20 @@
+# Windows 本机开发：MySQL 在宿主机，Redis 在 VMware 等虚拟机；不启动 Kafka，秒杀走同步建单。
+# 覆盖 Redis 主机：设置环境变量 SPRING_DATA_REDIS_HOST（或见下方默认）。
+# 覆盖数据库密码：SPRING_DATASOURCE_PASSWORD；Redis 密码：SPRING_DATA_REDIS_PASSWORD。
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/life_service_review_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:1234}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:192.168.88.101}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      database: ${SPRING_DATA_REDIS_DATABASE:1}
+      password: ${SPRING_DATA_REDIS_PASSWORD:123321}
+
+app:
+  kafka:
+    seckill:
+      enabled: false

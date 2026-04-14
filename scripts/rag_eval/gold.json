@@ -1,0 +1,22 @@
+[
+  {"query": "忘记密码了怎么登录", "gold_heading": "如何注册和登录"},
+  {"query": "附近有什么店怎么看", "gold_heading": "附近店铺搜索"},
+  {"query": "秒杀能买几件", "gold_heading": "秒杀活动规则"},
+  {"query": "订单待支付可以取消吗", "gold_heading": "订单管理"},
+  {"query": "退款多久到账", "gold_heading": "退款和售后"},
+  {"query": "商家怎么开店", "gold_heading": "店铺入驻流程"},
+  {"query": "AI帮写点评怎么用", "gold_heading": "AI 帮写功能说明"},
+  {"query": "平台会泄露我手机号吗", "gold_heading": "平台安全与隐私"},
+  {"query": "客服电话多少", "gold_heading": "联系客服"},
+  {"query": "与淘宝无关的问题平台管吗", "gold_heading": "平台服务范围与应答规则"},
+  {"query": "我要怎么进行账号的注册？", "gold_heading": "如何注册和登录"},
+  {"query": "你是谁啊？", "gold_heading": "平台服务范围与应答规则"},
+  {"query": "有什么推荐的美食吗？", "gold_heading": "平台服务范围与应答规则"},
+  {"query": "我登录的验证码有效时间多久？", "gold_heading": "图形验证码说明"},
+  {"query": "在哪写点评", "gold_heading": "如何发表点评"},
+  {"query": "别人怎么回复我的点评?", "gold_heading": "点评下的回复"},
+  {"query": "怎么点赞？", "gold_heading": "点赞功能"},
+  {"query": "怎么关注其他人？", "gold_heading": "用户关注与粉丝"},
+  {"query": "博客与动态怎么删除？", "gold_heading": "博客与动态"}
+
+]

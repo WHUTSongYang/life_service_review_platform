@@ -10,16 +10,23 @@ import java.util.Map;
 
 /**
  * 文件上传控制器。
- * 支持图片上传，根据配置使用本地存储或 OSS。
+ * <p>URL 前缀：{@code /api/files}。根据配置经 {@link StorageFacade} 写入本地或 OSS，访问策略以存储实现为准。</p>
  */
 @RestController
 @RequestMapping("/api/files")
 @RequiredArgsConstructor
 public class FileController {
 
+    /** 统一文件存储门面（本地/OSS 等） */
     private final StorageFacade storageFacade;
 
-    // 上传文件，返回访问 URL
+    /**
+     * 上传单个文件并返回可访问 URL。
+     *
+     * @param file 表单字段名为 {@code file} 的二进制内容
+     * @return 包含 {@code url} 的 Map
+     * @throws IllegalArgumentException 未选择文件或上传失败
+     */
     @PostMapping("/upload")
     public ApiResponse<Map<String, String>> upload(@RequestParam("file") MultipartFile file) {
         if (file == null || file.isEmpty()) {

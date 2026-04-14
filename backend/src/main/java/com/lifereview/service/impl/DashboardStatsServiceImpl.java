@@ -20,21 +20,33 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 管理端数据统计服务实现类。
- * 提供日营业额、畅销商品等统计，按管理员权限过滤可查看的店铺范围。
+ * 管理端看板统计服务实现。
+ * <p>
+ * 按管理员可管辖店铺范围聚合「每日营业额」与「畅销商品」；超管可查看全部管辖店，普通管理员仅自己的店，
+ * 若传入 {@code shopId} 则校验该店是否在权限范围内。
  */
 @Service
 @RequiredArgsConstructor
 public class DashboardStatsServiceImpl implements DashboardStatsService {
 
-    // 日期格式化器
+    /** 图表横轴日期格式 {@code yyyy-MM-dd} */
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
     private final DashboardStatsRepository dashboardStatsRepository;
     private final ShopReviewService shopReviewService;
 
+    /**
+     * 查询最近若干天内每日营业额，缺失日期补零。
+     *
+     * @param userId     当前管理员用户 id
+     * @param superAdmin 是否超级管理员
+     * @param shopId     可选，限定单店；{@code null} 表示权限内全部店
+     * @param days       统计天数（会被限制在 1～90）
+     * @return 按日期升序的营业额列表；无权限范围内店铺时返回空列表
+     * @throws IllegalArgumentException 指定 {@code shopId} 但无权限查看该店
+     */
     @Override
     public List<DailyRevenueItem> getDailyRevenue(Long userId, boolean superAdmin, Long shopId, int days) {
-        // 限制天数在 1~90 之间
         int safeDays = Math.min(Math.max(1, days), 90);
         List<Long> scopeShopIds = resolveScopeShopIds(userId, superAdmin, shopId);
         if (scopeShopIds.isEmpty()) {
@@ -45,12 +57,12 @@ public class DashboardStatsServiceImpl implements DashboardStatsService {
         LocalDateTime startTime = startDate.atStartOfDay();
         LocalDateTime endTime = today.plusDays(1).atStartOfDay();
         List<DailyRevenueQueryRow> rows = dashboardStatsRepository.queryDailyRevenue(scopeShopIds, startTime, endTime);
-        // 按日期聚合营业额
+        // 将 SQL 行转为 date -> revenue 映射
         Map<String, BigDecimal> revenueMap = new HashMap<>();
         for (DailyRevenueQueryRow row : rows) {
             revenueMap.put(row.getDate(), row.getRevenue() == null ? BigDecimal.ZERO : row.getRevenue());
         }
-        // 补齐每一天的营业额（无数据则为 0）
+        // 连续日历补齐，无数据日期为 0
         List<DailyRevenueItem> result = new ArrayList<>();
         for (int i = 0; i < safeDays; i++) {
             LocalDate date = startDate.plusDays(i);
@@ -63,6 +75,17 @@ public class DashboardStatsServiceImpl implements DashboardStatsService {
         return result;
     }
 
+    /**
+     * 查询指定时间窗口内畅销商品 TOP 列表。
+     *
+     * @param userId     当前管理员用户 id
+     * @param superAdmin 是否超级管理员
+     * @param shopId     可选单店过滤
+     * @param days       统计天数（1～90）
+     * @param limit      返回条数上限（1～50）
+     * @return 畅销商品 DTO 列表；无店铺范围时为空列表
+     * @throws IllegalArgumentException 指定 {@code shopId} 但无权限
+     */
     @Override
     public List<BestSellerItem> getBestSellers(Long userId, boolean superAdmin, Long shopId, int days, int limit) {
         int safeDays = Math.min(Math.max(1, days), 90);
@@ -78,7 +101,15 @@ public class DashboardStatsServiceImpl implements DashboardStatsService {
         return dashboardStatsRepository.queryBestSellers(scopeShopIds, startTime, endTime, safeLimit);
     }
 
-    // 解析统计范围内的店铺 ID 列表，超级管理员可见全部，普通管理员仅可管理自己的店铺
+    /**
+     * 解析统计所允许的店铺 id 列表：先取管辖店铺，再按 {@code shopId} 过滤。
+     *
+     * @param userId     管理员 id
+     * @param superAdmin 是否超管
+     * @param shopId     可选，非空时必须属于管辖列表
+     * @return 参与 SQL 的店铺 id 列表
+     * @throws IllegalArgumentException {@code shopId} 不在管辖范围内
+     */
     private List<Long> resolveScopeShopIds(Long userId, boolean superAdmin, Long shopId) {
         List<Shop> scopeShops = shopReviewService.listManageShops(userId, superAdmin);
         List<Long> allShopIds = scopeShops.stream().map(Shop::getId).toList();

@@ -1,0 +1,18 @@
+[Unit]
+Description=Life Review Platform Backend (Spring Boot)
+After=network.target mysql.service redis.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/life-review/app
+ExecStart=/usr/bin/java -jar /opt/life-review/app/life-review-backend.jar --spring.config.additional-location=file:/opt/life-review/app/application-prod.yml
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=10
+
+# 上传目录持久化（与 app.upload.local-path 一致）
+# ReadWritePaths=/opt/life-review/app/uploads
+
+[Install]
+WantedBy=multi-user.target

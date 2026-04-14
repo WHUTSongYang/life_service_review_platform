@@ -1,0 +1,22 @@
+# CentOS Docker 等生产环境：MySQL / Redis / Kafka 均为 Compose 服务名；秒杀异步走 Kafka。
+# 必须在环境中提供：SPRING_DATASOURCE_PASSWORD、SPRING_DATA_REDIS_PASSWORD；
+# 建议设置：APP_JWT_SECRET、APP_AI_API_KEY（若启用 AI）。
+spring:
+  datasource:
+    url: jdbc:mysql://mysql:3306/life_service_review_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:Szy20021119@}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      database: ${SPRING_DATA_REDIS_DATABASE:1}
+      password: ${SPRING_DATA_REDIS_PASSWORD:168593}
+
+app:
+  kafka:
+    seckill:
+      enabled: true

@@ -2,7 +2,6 @@ package com.lifereview.service;
 
 import com.lifereview.dto.AdminLoginRequest;
 import com.lifereview.dto.AuthPrincipal;
-import com.lifereview.dto.CodeLoginRequest;
 import com.lifereview.dto.LoginRequest;
 import com.lifereview.dto.RegisterRequest;
 import com.lifereview.entity.User;
@@ -10,26 +9,46 @@ import com.lifereview.entity.User;
 import java.util.Map;
 
 /**
- * 认证服务接口。
- * 负责用户注册、密码/验证码登录、管理员登录、Token 校验及登出。
+ * 业务职责说明：用户与管理员身份认证；覆盖注册、密码登录（含图形验证码）、Token 校验与登出。
  */
 public interface AuthService {
 
-    // 用户注册，返回注册成功的用户实体
+    /**
+     * 用户注册。
+     *
+     * @param req 注册请求体（账号、密码等）
+     * @return 新建的用户实体
+     */
     User register(RegisterRequest req);
 
-    // 密码登录，返回包含 token 和用户信息的 Map
+    /**
+     * 密码登录（含图形验证码校验）。
+     *
+     * @param req 登录请求体（账号、密码、验证码等）
+     * @return 包含 token 与用户信息的键值映射
+     */
     Map<String, Object> loginWithPassword(LoginRequest req);
 
-    // 验证码登录，返回包含 token 和用户信息的 Map
-    Map<String, Object> loginWithCode(CodeLoginRequest req);
-
-    // 管理员登录，返回包含 token 和管理员信息的 Map
+    /**
+     * 管理员登录。
+     *
+     * @param req 管理员登录请求体
+     * @return 包含 token 与管理员信息的键值映射
+     */
     Map<String, Object> loginAdmin(AdminLoginRequest req);
 
-    // 校验 token 有效性，返回认证主体信息，无效则返回 null
+    /**
+     * 校验访问令牌是否有效。
+     *
+     * @param token JWT 或会话 token 字符串
+     * @return 有效时返回认证主体；无效或过期时返回 {@code null}
+     */
     AuthPrincipal validateToken(String token);
 
-    // 登出，使指定 token 失效
+    /**
+     * 登出并使指定 token 失效。
+     *
+     * @param token 待失效的 token
+     */
     void logout(String token);
 }

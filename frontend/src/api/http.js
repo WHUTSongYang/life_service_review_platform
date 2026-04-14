@@ -1,6 +1,9 @@
 import axios from "axios";
 
-export const baseURL = "http://localhost:8080";
+/** 开发默认直连后端；生产构建前设置 VITE_API_BASE（见 frontend/.env.production.example） */
+const envBase = import.meta.env.VITE_API_BASE;
+export const baseURL =
+  envBase === undefined || envBase === null ? "http://localhost:8080" : envBase;
 
 const http = axios.create({
   baseURL,

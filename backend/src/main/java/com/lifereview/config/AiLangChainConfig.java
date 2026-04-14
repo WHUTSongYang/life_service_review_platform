@@ -1,4 +1,3 @@
-// 包声明：配置类所在包
 package com.lifereview.config;
 
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -12,33 +11,38 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Duration;
 
 /**
- * LangChain4j 模型统一配置类。
- * 集中创建三类模型 Bean：
- * - OpenAiChatModel：非流式，供 AI 帮写点评使用。
- * - OpenAiStreamingChatModel：流式，供 AI 客服 SSE 流式输出使用。
- * - OpenAiEmbeddingModel：向量嵌入，供 RAG FAQ 知识库检索使用。
- * 均读取 app.ai.* 配置（base-url、api-key、model 等），按 app.ai.enabled 或 app.rag.enabled 条件创建。
+ * LangChain4j 与 OpenAI 兼容 API 的模型 Bean 配置。
+ * <p>
+ * 集中创建：非流式对话模型（点评生成、意图路由 JSON）、流式对话模型（客服 SSE）、
+ * 向量嵌入模型（RAG FAQ）。配置项来自 {@code app.ai.*} 与 {@code app.rag.*}，
+ * 并按 {@code app.ai.enabled}、{@code app.rag.enabled} 条件装配。
+ * </p>
  */
 @Configuration
 public class AiLangChainConfig {
 
-    /** 大模型 API 基地址，兼容 OpenAI 协议的网关（如 DashScope、DeepSeek） */
+    /** 大模型 HTTP API 基地址（兼容 OpenAI 协议的网关或直连） */
     @Value("${app.ai.base-url:https://api.deepseek.com}")
     private String baseUrl;
 
-    /** 大模型 API 密钥 */
+    /** 调用大模型所需的 API Key */
     @Value("${app.ai.api-key:}")
     private String apiKey;
 
-    /** 使用的模型名称，如 qwen-plus、deepseek-chat、gpt-4o-mini 等 */
+    /** 对话/路由使用的模型名称，如 deepseek-chat、qwen-plus 等 */
     @Value("${app.ai.model:deepseek-chat}")
     private String modelName;
 
-    /** 单次请求超时时间（秒） */
+    /** 单次 HTTP 调用超时时间（秒） */
     @Value("${app.ai.timeout-seconds:20}")
     private int timeoutSeconds;
 
-    /** 非流式对话模型，供 AI 帮写点评使用。仅当 app.ai.enabled=true 时创建 */
+    /**
+     * 非流式聊天模型：中等温度与较短输出，用于 AI 帮写点评等场景。
+     * <p>仅当 {@code app.ai.enabled=true} 时注册。</p>
+     *
+     * @return 配置完成的 {@link OpenAiChatModel}
+     */
     @Bean
     @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
     public OpenAiChatModel openAiChatModel() {
@@ -52,7 +56,33 @@ public class AiLangChainConfig {
                 .build();
     }
 
-    /** 流式对话模型，供 AI 客服 SSE 流式输出。仅当 app.ai.enabled=true 时创建 */
+    /**
+     * 非流式、低温度模型：用于 AI 客服意图路由，期望稳定 JSON 输出。
+     * <p>Bean 名为 {@code openAiRouterModel}，供 {@link com.lifereview.service.AiChatIntentRouter} 注入。</p>
+     *
+     * @param routerMaxTokens 路由调用允许的最大生成 token 数
+     * @return 专用于意图分类/路由的 {@link OpenAiChatModel}
+     */
+    @Bean(name = "openAiRouterModel")
+    @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
+    public OpenAiChatModel openAiRouterModel(
+            @Value("${app.ai.router-max-tokens:256}") int routerMaxTokens) {
+        return OpenAiChatModel.builder()
+                .baseUrl(normalizeUrl(baseUrl))
+                .apiKey(apiKey)
+                .modelName(modelName)
+                .temperature(0.0)
+                .maxTokens(routerMaxTokens)
+                .timeout(Duration.ofSeconds(timeoutSeconds))
+                .build();
+    }
+
+    /**
+     * 流式聊天模型：用于 AI 客服 SSE 等边生成边输出场景。
+     * <p>仅当 {@code app.ai.enabled=true} 时注册。</p>
+     *
+     * @return 配置完成的 {@link OpenAiStreamingChatModel}
+     */
     @Bean
     @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
     public OpenAiStreamingChatModel openAiStreamingChatModel() {
@@ -66,7 +96,13 @@ public class AiLangChainConfig {
                 .build();
     }
 
-    /** 向量嵌入模型，供 RAG 知识库使用。仅当 app.rag.enabled=true 时创建 */
+    /**
+     * 文本向量嵌入模型：用于 RAG 知识库检索前的查询与文档向量化。
+     * <p>仅当 {@code app.rag.enabled=true} 时注册。</p>
+     *
+     * @param embeddingModelName 嵌入模型名称，默认可与向量服务约定一致
+     * @return 配置完成的 {@link OpenAiEmbeddingModel}
+     */
     @Bean
     @ConditionalOnProperty(name = "app.rag.enabled", havingValue = "true")
     public OpenAiEmbeddingModel openAiEmbeddingModel(
@@ -79,13 +115,15 @@ public class AiLangChainConfig {
                 .build();
     }
 
-    /** 规范化 URL：去除末尾斜杠，避免拼接路径时出现双斜杠 */
+    /**
+     * 规范化 API 基地址：去空白、去尾部斜杠，避免与路径拼接出现双斜杠。
+     *
+     * @param url 配置中的原始 base-url，可为空
+     * @return 可用于 LangChain4j 客户端的规范化 URL
+     */
     private String normalizeUrl(String url) {
-        // 空或空白时返回默认地址
-        if (url == null || url.isBlank()) return "https://api.deepseek.com";
-        // 去除首尾空白
+        if (url == null || url.isBlank()) return "https://api.deepseek.com"; // 缺省回退
         String trimmed = url.trim();
-        // 若以 / 结尾则去掉
         return trimmed.endsWith("/") ? trimmed.substring(0, trimmed.length() - 1) : trimmed;
     }
 }

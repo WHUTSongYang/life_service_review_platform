@@ -1,4 +1,3 @@
-// 包声明：DTO 所在包
 package com.lifereview.dto;
 
 import lombok.Builder;
@@ -6,32 +5,34 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/** 点评详情展示项：含店铺、用户、内容、评分、点赞数等 */
+/**
+ * 单条点评的详情展示项，包含店铺摘要、作者、正文、评分与互动数据等。
+ */
 @Data
 @Builder
 public class ReviewDetailItem {
-    // 字段说明：点评主键 ID
+    /** 点评主键 ID */
     private Long id;
-    // 字段说明：店铺 ID
+    /** 店铺 ID */
     private Long shopId;
-    // 字段说明：店铺名称
+    /** 店铺名称 */
     private String shopName;
-    // 字段说明：店铺类型
+    /** 店铺类型 */
     private String shopType;
-    // 字段说明：店铺地址
+    /** 店铺地址 */
     private String shopAddress;
-    // 字段说明：点评用户 ID
+    /** 点评作者用户 ID */
     private Long userId;
-    // 字段说明：点评用户昵称
+    /** 点评作者昵称 */
     private String userNickname;
-    // 字段说明：点评正文内容
+    /** 点评正文内容 */
     private String content;
-    // 字段说明：点评图片 URL 列表，逗号分隔
+    /** 点评配图 URL 列表，多为逗号分隔的字符串 */
     private String images;
-    // 字段说明：评分 1-5
+    /** 评分，取值范围 1–5 */
     private Integer score;
-    // 字段说明：点赞数
+    /** 点赞数 */
     private Integer likeCount;
-    // 字段说明：创建时间
+    /** 创建时间 */
     private LocalDateTime createdAt;
 }

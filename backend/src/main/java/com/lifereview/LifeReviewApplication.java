@@ -1,20 +1,29 @@
-// 包声明：生活服务点评平台主包
 package com.lifereview;
 
-// MyBatis 扫描注解，用于自动发现 Mapper 接口
 import org.mybatis.spring.annotation.MapperScan;
-// Spring Boot 启动入口
 import org.springframework.boot.SpringApplication;
-// Spring Boot 自动配置注解
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
-/** 生活服务点评平台启动类。MapperScan 扫描 repository 包下的 MyBatis Mapper 接口，实现数据访问层自动装配 */
+/**
+ * 生活服务点评平台 Spring Boot 启动入口。
+ * <p>
+ * 负责引导 Spring 容器启动；通过 {@link MapperScan} 扫描 {@code com.lifereview.repository} 包，
+ * 自动注册 MyBatis Mapper 接口，完成数据访问层装配。
+ * @EnableScheduling开启了定时任务能力
+ * </p>
+ */
 @SpringBootApplication
 @MapperScan("com.lifereview.repository")
+@EnableScheduling
 public class LifeReviewApplication {
-    // 程序入口：启动 Spring Boot 应用
+
+    /**
+     * 应用程序主入口：启动内嵌 Web 容器并加载 Spring 应用上下文。
+     *
+     * @param args 命令行参数，透传给 Spring Boot
+     */
     public static void main(String[] args) {
-        // 运行应用，传入主类与命令行参数
-        SpringApplication.run(LifeReviewApplication.class, args);
+        SpringApplication.run(LifeReviewApplication.class, args); // 启动 Spring Boot 应用
     }
 }

@@ -601,6 +601,24 @@ async function scrollAiToBottom() {
   }
 }
 
+/** 可选：供 AI 客服「附近店铺」意图使用；用户拒绝或超时时返回空对象 */
+function getOptionalCoords() {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    return Promise.resolve({});
+  }
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        resolve({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude
+        }),
+      () => resolve({}),
+      { timeout: 4000, maximumAge: 120000 }
+    );
+  });
+}
+
 async function sendAiMessage() {
   const question = aiInput.value.trim();
   if (!question || aiLoading.value) {
@@ -613,6 +631,7 @@ async function sendAiMessage() {
   aiMessages.value.push(assistantMsg);
   await scrollAiToBottom();
   try {
+    const coords = await getOptionalCoords();
     const token = localStorage.getItem("token");
     const response = await fetch(`${baseURL}/api/ai/chat/stream`, {
       method: "POST",
@@ -622,7 +641,8 @@ async function sendAiMessage() {
       },
       body: JSON.stringify({
         message: question,
-        history: toAiHistory()
+        history: toAiHistory(),
+        ...coords
       })
     });
     if (!response.ok || !response.body) {

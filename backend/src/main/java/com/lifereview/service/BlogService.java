@@ -6,23 +6,50 @@ import com.lifereview.entity.Blog;
 import java.util.List;
 
 /**
- * 博客/动态服务接口。
- * 负责用户动态的发布、修改、删除、列表查询及点赞。
+ * 业务职责说明：用户动态（博客）的发布、维护、查询与点赞互动。
  */
 public interface BlogService {
 
-    // 创建博客动态，返回新建的 Blog 实体
+    /**
+     * 发布一条动态。
+     *
+     * @param userId 当前用户 ID
+     * @param req    动态内容请求体
+     * @return 新建的博客实体
+     */
     Blog create(Long userId, BlogRequest req);
 
-    // 更新指定博客动态，返回更新后的 Blog
+    /**
+     * 更新指定动态（通常为作者本人）。
+     *
+     * @param userId 当前用户 ID
+     * @param blogId 动态 ID
+     * @param req    更新内容请求体
+     * @return 更新后的博客实体
+     */
     Blog update(Long userId, Long blogId, BlogRequest req);
 
-    // 删除指定博客动态（仅作者可删）
+    /**
+     * 删除指定动态（通常为作者本人）。
+     *
+     * @param userId 当前用户 ID
+     * @param blogId 动态 ID
+     */
     void delete(Long userId, Long blogId);
 
-    // 获取所有博客动态列表（按时间倒序）
+    /**
+     * 获取全部动态列表（一般按发布时间倒序）。
+     *
+     * @return 动态实体列表
+     */
     List<Blog> listAll();
 
-    // 切换点赞状态，返回当前点赞数
+    /**
+     * 切换当前用户对指定动态的点赞状态。
+     *
+     * @param userId 当前用户 ID
+     * @param blogId 动态 ID
+     * @return 切换后的点赞总数
+     */
     Integer toggleLike(Long userId, Long blogId);
 }

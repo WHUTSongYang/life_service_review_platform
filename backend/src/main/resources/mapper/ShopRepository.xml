@@ -38,4 +38,12 @@
                or lower(name) like lower(concat('%', #{keyword}, '%'))
                or lower(coalesce(address, '')) like lower(concat('%', #{keyword}, '%')))
     </select>
+
+    <!-- 按评分与点评数推荐店铺（有评分或有点评的优先） -->
+    <select id="findTopByAvgScoreDesc" resultType="com.lifereview.entity.Shop">
+        select * from shops
+        where (coalesce(avg_score, 0) &gt; 0 or coalesce(review_count, 0) &gt; 0)
+        order by coalesce(avg_score, 0) desc, coalesce(review_count, 0) desc, id desc
+        limit #{limit}
+    </select>
 </mapper>

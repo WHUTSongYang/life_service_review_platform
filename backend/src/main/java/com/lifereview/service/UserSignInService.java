@@ -3,14 +3,23 @@ package com.lifereview.service;
 import com.lifereview.dto.SignInStatusItem;
 
 /**
- * 用户签到服务接口。
- * 负责每日签到及连续签到天数统计。
+ * 业务职责说明：用户每日签到及连续签到天数等签到状态查询与更新。
  */
 public interface UserSignInService {
 
-    // 获取当前用户签到状态（今日是否已签、连续天数等）
+    /**
+     * 查询用户签到状态（如今日是否已签、连续签到天数等）。
+     *
+     * @param userId 用户 ID
+     * @return 签到状态 DTO
+     */
     SignInStatusItem getStatus(Long userId);
 
-    // 执行今日签到，返回更新后的签到状态
+    /**
+     * 执行当日签到并持久化。
+     *
+     * @param userId 用户 ID
+     * @return 签到完成后的最新状态
+     */
     SignInStatusItem signToday(Long userId);
 }

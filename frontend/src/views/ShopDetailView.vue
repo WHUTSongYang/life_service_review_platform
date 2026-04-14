@@ -91,6 +91,23 @@ async function loadProducts() {
   products.value = await unwrap(http.get(`/api/shops/${shopId}/products`));
 }
 
+function alertPurchaseFailure(msg) {
+  const m = String(msg || "");
+  if (m.includes("仅限购买一次") || m.includes("已购买")) {
+    return ElMessageBox.alert("您已购买该商品，无法继续", "抢购失败", {
+      type: "warning",
+      confirmButtonText: "知道了"
+    });
+  }
+  if (m.includes("已抢光") || m.includes("库存")) {
+    return ElMessageBox.alert("库存不足", "抢购失败", {
+      type: "warning",
+      confirmButtonText: "知道了"
+    });
+  }
+  return Promise.resolve();
+}
+
 async function purchase(productId) {
   if (!localStorage.getItem("token")) {
     ElMessage.warning("请先登录后再抢购");
@@ -98,26 +115,48 @@ async function purchase(productId) {
     return;
   }
   try {
-    await unwrap(http.post(`/api/products/${productId}/purchase`));
+    const res = await http.post(`/api/products/${productId}/purchase`);
+    if (!res.data.success) {
+      throw new Error(res.data.message || "请求失败");
+    }
+    if (res.status === 202) {
+      const requestId = res.data.data?.requestId;
+      if (!requestId) {
+        throw new Error("受理失败");
+      }
+      const deadline = Date.now() + 30000;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 400));
+        const poll = await http.get(`/api/products/purchase-requests/${requestId}`);
+        if (!poll.data.success) {
+          throw new Error(poll.data.message || "查询失败");
+        }
+        const q = poll.data.data;
+        if (q.status === "SUCCESS") {
+          ElMessage.success("抢购成功，订单已创建");
+          await loadProducts();
+          return;
+        }
+        if (q.status === "FAILED") {
+          await alertPurchaseFailure(q.message);
+          const m = String(q.message || "");
+          if (!m.includes("仅限购买一次") && !m.includes("已购买") && !m.includes("已抢光") && !m.includes("库存")) {
+            ElMessage.error(m || "抢购失败，请稍后重试");
+          }
+          return;
+        }
+      }
+      ElMessage.warning("处理时间较长，请稍后在「我的订单」中查看");
+      return;
+    }
     ElMessage.success("抢购成功，订单已创建");
     await loadProducts();
   } catch (err) {
     const msg = String(err?.message || "");
-    if (msg.includes("仅限购买一次") || msg.includes("已购买")) {
-      await ElMessageBox.alert("您已购买该商品，无法继续", "抢购失败", {
-        type: "warning",
-        confirmButtonText: "知道了"
-      });
-      return;
+    await alertPurchaseFailure(msg);
+    if (!msg.includes("仅限购买一次") && !msg.includes("已购买") && !msg.includes("已抢光") && !msg.includes("库存")) {
+      ElMessage.error(msg || "抢购失败，请稍后重试");
     }
-    if (msg.includes("已抢光") || msg.includes("库存")) {
-      await ElMessageBox.alert("库存不足", "抢购失败", {
-        type: "warning",
-        confirmButtonText: "知道了"
-      });
-      return;
-    }
-    ElMessage.error(msg || "抢购失败，请稍后重试");
   }
 }
 

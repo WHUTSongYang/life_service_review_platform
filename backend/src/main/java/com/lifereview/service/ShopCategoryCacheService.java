@@ -3,20 +3,35 @@ package com.lifereview.service;
 import java.util.List;
 
 /**
- * 店铺分类缓存服务接口。
- * 使用 Redis 缓存分类列表，提供分类校验与规范化。
+ * 业务职责说明：店铺分类列表的缓存读取、合法性校验、名称规范化及缓存刷新。
  */
 public interface ShopCategoryCacheService {
 
-    // 获取所有启用的分类名称列表（从缓存读取）
+    /**
+     * 获取当前启用的全部店铺分类名称（优先读缓存）。
+     *
+     * @return 分类名称列表
+     */
     List<String> getEnabledCategoryNames();
 
-    // 校验并规范化分类，非法则抛异常
+    /**
+     * 校验用户输入的分类是否合法，并返回规范化后的分类名。
+     *
+     * @param rawType 用户或上游传入的原始分类字符串
+     * @return 校验通过后的规范化分类名
+     */
     String validateAndNormalizeCategory(String rawType);
 
-    // 规范化分类名称（不抛异常，仅做格式转换）
+    /**
+     * 对分类字符串做格式规范化（不校验是否在启用列表内）。
+     *
+     * @param rawType 原始分类字符串
+     * @return 规范化后的分类名
+     */
     String normalizeCategoryName(String rawType);
 
-    // 刷新分类缓存，从数据库重新加载
+    /**
+     * 从数据库重新加载分类并刷新 Redis 等缓存。
+     */
     void refreshCache();
 }
