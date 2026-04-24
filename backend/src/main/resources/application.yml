@@ -59,7 +59,7 @@ app:
     enabled: ${APP_AI_ENABLED:true}
     base-url: ${APP_AI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
     model: ${APP_AI_MODEL:qwen-plus}
-    api-key: ${APP_AI_API_KEY:sk-479b9d67620941f0b44290c6deebdd75}
+    api-key: ${APP_AI_API_KEY:yourapikey}
     timeout-seconds: ${APP_AI_TIMEOUT_SECONDS:20}
     router-max-tokens: 256
     recommend-shop-limit: 8
